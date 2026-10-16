@@ -1,0 +1,10 @@
+# Secrets et donnees : jamais dans git.
+.env
+.env.avant-restauration
+db/
+documents/
+custom/
+scripts/.ssh/
+scripts/dump-*/
+scripts/.backup-*.lock
+restauration-tmp/
