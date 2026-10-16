@@ -1,5 +1,5 @@
 # Table des matieres de la stack. La logique vit dans scripts/.
-.PHONY: help env up down restart logs ps init backup check restore update
+.PHONY: help env up down restart logs ps cron init backup check restore update
 
 DC := docker compose
 
@@ -12,6 +12,7 @@ help:
 	@echo "  make restart   redemarre la stack"
 	@echo "  make logs      suit les logs de Dolibarr"
 	@echo "  make ps        etat des conteneurs (healthy ?)"
+	@echo "  make cron      verifie les taches planifiees (et pose leur cle si elle est vide)"
 	@echo ""
 	@echo "  make init      configure la sauvegarde borg (cle SSH, depot BWH, cron quotidien)"
 	@echo "  make backup    lance une sauvegarde maintenant"
@@ -25,6 +26,15 @@ env:
 
 up:
 	$(DC) up -d
+	@echo ""
+	@echo "Stack lancee : https://$$(sed -n 's/^DOMAIN=//p' .env | tr -d "'\"")"
+	@echo "  Premier demarrage : installation de la base (~1 min 30). Suivre avec make logs."
+	@echo "  make ps    dolibarr doit passer (healthy)"
+	@echo "  make cron  taches planifiees (une fois le module Travaux planifies actif)"
+	@grep -q '^BORG_PREFIX=' .env || echo "  ATTENTION : aucune sauvegarde configuree -> make init"
+
+cron:
+	@bash scripts/check_cron.sh
 
 down:
 	$(DC) down

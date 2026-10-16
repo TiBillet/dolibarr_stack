@@ -23,9 +23,11 @@ make up && make logs
 
 Le premier démarrage installe la base (~1 min 30). Puis `https://<DOMAIN>`, avec
 le compte admin affiché par `make env` : **changer son mot de passe tout de suite**.
-Enfin `make init` pour la sauvegarde. Une stack sans sauvegarde n'est pas en prod.
 
 À régler ensuite dans l'interface : *Configuration → Emails* (SMTP), les modules.
+Dès que le module *Travaux planifiés* est actif : `make cron` (voir
+[Tâches planifiées](#tâches-planifiées-cron)). Enfin `make init` pour la sauvegarde.
+Une stack sans sauvegarde n'est pas en prod.
 
 ### Trois conteneurs
 
@@ -47,6 +49,61 @@ Enfin `make init` pour la sauvegarde. Une stack sans sauvegarde n'est pas en pro
 Un clone par instance, chacun avec son `.env` : `COMPOSE_PROJECT_NAME` et `DOMAIN`
 doivent différer. Chaque instance a sa base, ses dossiers, son dépôt borg et sa
 ligne de cron.
+
+## Tâches planifiées (cron)
+
+Relances, e-mails, rapports, et la tâche de nuit du module TiBillet : ce sont des
+*tâches planifiées* de Dolibarr. Elles ne tournent que si quelqu'un réveille
+Dolibarr régulièrement. Ici, c'est le conteneur `dolibarr-cron`.
+
+### Comment ça marche
+
+Toutes les 5 minutes, `dolibarr-cron` lance :
+
+```
+/var/www/scripts/cron/cron_run_jobs.php <DOLI_CRON_KEY> firstadmin
+```
+
+Dolibarr exécute alors les tâches dont l'heure est venue. Trois conditions, et
+**si une seule manque, aucune tâche ne tourne, sans alerte dans l'interface** :
+
+1. **Le module *Travaux planifiés* est actif.** Un module qui a des tâches (TiBillet)
+   l'active seul. Sinon : *Configuration → Modules/Applications*.
+2. **Un utilisateur est donné.** `DOLI_CRON_USER: firstadmin` dans
+   `docker-compose.yml` (le premier administrateur actif). Sans lui, chaque passage
+   s'arrête sur `Usage: ...`.
+3. **La clé envoyée est celle de Dolibarr.** Le conteneur envoie `DOLI_CRON_KEY` du
+   `.env`. Dolibarr la compare à son réglage *Configuration → Modules/Applications →
+   Travaux planifiés → roue dentée → « Clé de sécurité pour l'URL de lancement des
+   travaux programmés »*.
+
+Le piège est la condition 3. Ce réglage est créé **vide** quand le module
+s'active, donc après l'installation : l'image ne peut pas le remplir. Tant qu'il
+est vide ou différent, chaque passage répond `securitykey ... does not match`.
+
+### Après l'activation du module : `make cron`
+
+`make cron` vérifie les trois conditions, et :
+
+- si la clé de Dolibarr est **vide**, il la remplit avec `DOLI_CRON_KEY` ;
+- si elle est **remplie mais différente** (changée dans l'interface), il n'écrase
+  rien : copier `DOLI_CRON_KEY` du `.env` dans le réglage ci-dessus ;
+- il affiche la date de la dernière tâche lancée.
+
+Code de sortie non nul si quelque chose cloche : utilisable en monitoring, comme
+`make check`.
+
+### Vérifier que ça tourne
+
+- `docker compose logs --tail 20 dolibarr-cron` : un bloc `cron_run_jobs.php` toutes
+  les 5 minutes. `not qualified` est normal : la tâche n'est pas encore à l'heure.
+- Dans Dolibarr : *Accueil → Outils d'administration → Travaux planifiés*, colonne
+  de la dernière exécution.
+
+### Changer la clé
+
+Changer `DOLI_CRON_KEY` dans le `.env`, `make up` (le conteneur est recréé avec la
+nouvelle clé), puis coller la même valeur dans le réglage de Dolibarr.
 
 ## Données
 
@@ -128,3 +185,28 @@ lignes « Duplicate column » de ce journal sont normales.
 - **404 Traefik** — conteneur absent du réseau `frontend`, ou `DOMAIN` erroné.
 - **Session perdue en http** — normal : le cookie est `Secure`, Dolibarr ne
   s'utilise qu'en https.
+- **Aucune tâche planifiée ne tourne** — `make cron`. Dans les logs de
+  `dolibarr-cron` : `does not match` = clé, `Usage:` = utilisateur.
+
+## Développement
+
+En local, un `docker-compose.override.yml` (lu tout seul par `docker compose`,
+**hors de git**) ajoute ce qui ne concerne qu'un poste. Exemple pour le module
+TiBillet :
+
+```yaml
+services:
+  dolibarr:
+    volumes:
+      - /chemin/vers/tibillet-dolibarr:/var/www/html/custom/tibillet
+    extra_hosts:
+      - "lespass.tibillet.localhost:host-gateway"
+  dolibarr-cron:
+    volumes:
+      - /chemin/vers/tibillet-dolibarr:/var/www/html/custom/tibillet
+    extra_hosts:
+      - "lespass.tibillet.localhost:host-gateway"
+```
+
+Les scripts (`make backup`, `update`, `restore`) n'utilisent que
+`docker-compose.yml`. Après un `make update` en dev, `make up` remet l'override.

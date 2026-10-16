@@ -1,5 +1,5 @@
 # DEV SEULEMENT — chantier 06 (module TiBillet). Lu tout seul par `docker compose`.
-# A supprimer (ou ne pas copier) sur un serveur de production.
+# Hors de git (.gitignore) : il ne doit jamais arriver sur un serveur.
 # 1. Le module en cours d'ecriture est monte comme custom/tibillet.
 # 2. lespass.tibillet.localhost pointe vers l'hote (Traefik ecoute sur 443) :
 #    les conteneurs Dolibarr peuvent appeler l'API TiBillet de dev.
@@ -11,12 +11,6 @@ services:
     extra_hosts:
       - "lespass.tibillet.localhost:host-gateway"
   dolibarr-cron:
-    # Sans utilisateur, cron_run_jobs.php s'arrete sur « Usage: ... » et AUCUNE tache
-    # planifiee ne tourne (relecture Fable 06-B, B-2). « firstadmin » = le premier admin
-    # actif. A reporter aussi dans docker-compose.yml pour la production.
-    # / Without a user, no scheduled job ever runs. Also needed in production.
-    environment:
-      DOLI_CRON_USER: firstadmin
     volumes:
       - /home/jonas/TiBillet/dev/tibillet-dolibarr:/var/www/html/custom/tibillet
     extra_hosts:

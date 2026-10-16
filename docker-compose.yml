@@ -79,6 +79,9 @@ services:
     environment:
       <<: *dolibarr-env
       DOLI_CRON: 1
+      # Sans utilisateur, cron_run_jobs.php s'arrete sur « Usage: ... » et AUCUNE
+      # tache ne tourne. « firstadmin » = le premier administrateur actif.
+      DOLI_CRON_USER: firstadmin
     healthcheck:
       disable: true
     labels: []

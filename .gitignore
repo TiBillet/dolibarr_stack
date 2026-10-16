@@ -8,5 +8,7 @@ scripts/.ssh/
 scripts/dump-*/
 scripts/.backup-*.lock
 restauration-tmp/
+# Reglages de dev propres a un poste (voir README, Developpement).
+docker-compose.override.yml
 /db.avant-tuto-2026-10-15/
 /documents.avant-tuto-2026-10-15/
