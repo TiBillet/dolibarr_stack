@@ -1,0 +1,122 @@
+# Stack Dolibarr + MariaDB derriere un Traefik existant (reseau externe "frontend",
+# certresolver "myresolver" : voir le depot TraefikV3).
+# Plusieurs instances peuvent cohabiter : chaque stack a son dossier, son
+# COMPOSE_PROJECT_NAME et son DOMAIN. D'ou l'absence de container_name.
+services:
+  dolibarr: &dolibarr
+    # Majeure epinglee dans le .env : correctifs et mineures au pull, jamais une
+    # majeure par surprise. Monter de majeure = changer DOLIBARR_VERSION puis
+    # `make update`, UNE majeure a la fois (voir README).
+    image: dolibarr/dolibarr:${DOLIBARR_VERSION:-24}
+    restart: unless-stopped
+    volumes:
+      - ./documents:/var/www/documents      # fichiers joints, PDF generes, install.lock
+      - ./custom:/var/www/html/custom       # modules externes
+      # Sans lui, l'installation automatique stocke les accents doublement encodes.
+      - ./mariadb-client.cnf:/etc/mysql/conf.d/zz-utf8mb4.cnf:ro
+    environment: &dolibarr-env
+      DOLI_URL_ROOT: https://${DOMAIN:?DOMAIN doit etre renseigne dans .env}
+      # Sel de chiffrement : NE PLUS JAMAIS LE CHANGER, sinon les donnees chiffrees
+      # (mots de passe SMTP, cles API...) deviennent illisibles.
+      DOLI_INSTANCE_UNIQUE_ID: ${DOLI_INSTANCE_UNIQUE_ID:?DOLI_INSTANCE_UNIQUE_ID doit etre renseigne dans .env}
+
+      DOLI_DB_TYPE: mysqli
+      DOLI_DB_HOST: dolibarr-mariadb
+      DOLI_DB_NAME: dolibarr
+      DOLI_DB_USER: ${MYSQL_USER:-dolibarr}
+      DOLI_DB_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD doit etre renseigne dans .env}
+
+      # Lus au PREMIER demarrage seulement (creation de la base et du compte admin).
+      DOLI_ADMIN_LOGIN: ${DOLI_ADMIN_LOGIN:-admin}
+      DOLI_ADMIN_PASSWORD: ${DOLI_ADMIN_PASSWORD:?DOLI_ADMIN_PASSWORD doit etre renseigne dans .env}
+      DOLI_COMPANY_NAME: ${DOLI_COMPANY_NAME:-}
+      DOLI_COMPANY_COUNTRYCODE: ${DOLI_COMPANY_COUNTRYCODE:-FR}
+
+      DOLI_CRON_KEY: ${DOLI_CRON_KEY:?DOLI_CRON_KEY doit etre renseigne dans .env}
+
+      # www-data prend l'UID de l'utilisateur de l'hote : documents/ reste lisible
+      # par le cron de sauvegarde, qui ne tourne pas en root.
+      WWW_USER_ID: ${WWW_USER_ID:-1000}
+      WWW_GROUP_ID: ${WWW_GROUP_ID:-1000}
+
+      PHP_INI_DATE_TIMEZONE: Europe/Paris
+      PHP_INI_UPLOAD_MAX_FILESIZE: 32M
+      PHP_INI_POST_MAX_SIZE: 40M
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS -o /dev/null http://127.0.0.1/index.php || exit 1"]
+      interval: 30s
+      timeout: 10s
+      # Apache ne demarre qu'APRES l'installation (premier demarrage, ~1 min 30)
+      # ou la migration de schema (montee de version, plusieurs minutes).
+      retries: 10
+      start_period: 300s
+    labels:
+      # Noms de routers/services Traefik globaux : derives du nom de projet pour
+      # que deux Dolibarr sur le meme serveur ne se marchent pas dessus.
+      - traefik.enable=true
+      - traefik.docker.network=frontend
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.rule=Host(`$DOMAIN`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.tls.certresolver=myresolver
+      - traefik.http.services.${COMPOSE_PROJECT_NAME}.loadbalancer.server.port=80
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      dolibarr-mariadb:
+        condition: service_healthy
+
+  # Taches planifiees de Dolibarr (relances, emails, rapports...). Avec
+  # DOLI_CRON=1, l'image ne lance NI l'installation NI Apache : seulement cron,
+  # toutes les 5 minutes. D'ou ce second conteneur, sur la meme image, qui
+  # attend que l'installation soit faite.
+  dolibarr-cron:
+    <<: *dolibarr
+    environment:
+      <<: *dolibarr-env
+      DOLI_CRON: 1
+    healthcheck:
+      disable: true
+    labels: []
+    networks:
+      - backend
+    depends_on:
+      dolibarr:
+        condition: service_healthy
+
+  dolibarr-mariadb:
+    image: mariadb:11.4   # LTS
+    restart: unless-stopped
+    volumes:
+      - ./db:/var/lib/mysql
+    environment:
+      # Ces mots de passe ne doivent plus jamais changer une fois la base initialisee.
+      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD doit etre renseigne dans .env}
+      MARIADB_USER: ${MYSQL_USER:-dolibarr}
+      MARIADB_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD doit etre renseigne dans .env}
+      MARIADB_DATABASE: dolibarr
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      # La toute premiere initialisation peut etre longue sur un disque lent.
+      retries: 30
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - backend
+
+networks:
+  # Reseau partage avec Traefik, deja cree sur le serveur.
+  frontend:
+    external: true
+  # Reseau prive Dolibarr <-> MariaDB : la base n'est pas joignable depuis frontend.
+  backend:

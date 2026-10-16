@@ -1,0 +1,42 @@
+# Modele du .env. Le plus simple :   make env
+# (pose les questions et genere tous les secrets). A la main :
+#   cp env_example .env && chmod 600 .env
+
+# Nom de cette instance. UNIQUE sur le serveur : il nomme les conteneurs, le
+# reseau prive et les routers Traefik. Minuscules, chiffres et tirets.
+COMPOSE_PROJECT_NAME=dolibarr-exemple
+
+# Domaine public (sans https://). Doit pointer sur le serveur (A record).
+DOMAIN='dolibarr.example.org'
+
+# Majeure de Dolibarr. Ne monter que d'UNE majeure a la fois, via make update.
+DOLIBARR_VERSION=24
+
+# Sel de chiffrement de Dolibarr. NE PLUS JAMAIS LE CHANGER.
+#   openssl rand -hex 32
+DOLI_INSTANCE_UNIQUE_ID=CHANGEME
+
+# Base de donnees — ne plus jamais changer une fois la base initialisee.
+#   openssl rand -hex 32
+MYSQL_ROOT_PASSWORD=CHANGEME
+MYSQL_PASSWORD=CHANGEME
+
+# Compte admin et societe : lus au PREMIER demarrage seulement.
+# Changer ensuite le mot de passe dans l'interface.
+DOLI_ADMIN_LOGIN=admin
+DOLI_ADMIN_PASSWORD=CHANGEME
+DOLI_COMPANY_NAME="Ma structure"
+DOLI_COMPANY_COUNTRYCODE=FR
+
+# Cle des taches planifiees.   openssl rand -hex 16
+DOLI_CRON_KEY=CHANGEME
+
+# UID/GID de l'utilisateur de l'hote qui lance les sauvegardes (id -u / id -g).
+WWW_USER_ID=1000
+WWW_GROUP_ID=1000
+
+# SAUVEGARDE — NE RIEN REMPLIR ICI : ecrit automatiquement par  make init
+# BORG_PREFIX=       prefixe des archives, et nom de la cle SSH du depot
+# BORG_REPO=         adresse ssh:// du depot sur borgwarehouse
+# BORG_PASSPHRASE=   A METTRE AU COFFRE, avec la cle exportee et l'id du depot
+# AGE_MAX_HEURES=    age max de la derniere archive avant que make check crie
