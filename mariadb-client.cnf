@@ -1,0 +1,7 @@
+# Monte dans le conteneur dolibarr. L'installation automatique de l'image charge
+# ses fichiers SQL avec le client mysql SANS preciser l'encodage : il parle alors
+# latin1 a une base utf8mb4, et tous les accents des donnees de reference
+# (departements, formes juridiques...) sont stockes doublement encodes
+# ("ArdÃ¨che"). Ce fichier force l'utf8mb4 pour tout client mysql du conteneur.
+[client]
+default-character-set = utf8mb4

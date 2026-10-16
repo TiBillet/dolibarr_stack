@@ -8,3 +8,5 @@ scripts/.ssh/
 scripts/dump-*/
 scripts/.backup-*.lock
 restauration-tmp/
+/db.avant-tuto-2026-10-15/
+/documents.avant-tuto-2026-10-15/

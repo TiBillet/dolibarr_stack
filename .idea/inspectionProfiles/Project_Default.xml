@@ -1,0 +1,59 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="MarkdownIncorrectlyNumberedListItem" enabled="false" level="WARNING" enabled_by_default="false" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <list>
+          <option value="html5lib" />
+          <option value="typing-extensions" />
+          <option value="appdirs" />
+          <option value="argcomplete" />
+          <option value="asttokens" />
+          <option value="backcall" />
+          <option value="decorator" />
+          <option value="executing" />
+          <option value="importlib-resources" />
+          <option value="ipdb" />
+          <option value="ipython" />
+          <option value="jedi" />
+          <option value="matplotlib-inline" />
+          <option value="parso" />
+          <option value="pexpect" />
+          <option value="pickleshare" />
+          <option value="prompt-toolkit" />
+          <option value="ptyprocess" />
+          <option value="pure-eval" />
+          <option value="pycups" />
+          <option value="pygments" />
+          <option value="pypng" />
+          <option value="pyserial" />
+          <option value="python-barcode" />
+          <option value="python-escpos" />
+          <option value="pyusb" />
+          <option value="pyyaml" />
+          <option value="qrcode" />
+          <option value="stack-data" />
+          <option value="tomli" />
+          <option value="traitlets" />
+          <option value="wcwidth" />
+          <option value="zipp" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="PyRedeclarationInspection" enabled="false" level="WARNING" enabled_by_default="false" />
+    <inspection_tool class="PyStubPackagesAdvertiser" enabled="true" level="WARNING" enabled_by_default="true">
+      <option name="ignoredPackages">
+        <list>
+          <option value="djangorestframework" />
+          <option value="celery" />
+        </list>
+      </option>
+    </inspection_tool>
+    <inspection_tool class="SpellCheckingInspection" enabled="false" level="TYPO" enabled_by_default="false">
+      <option name="processCode" value="true" />
+      <option name="processLiterals" value="true" />
+      <option name="processComments" value="true" />
+    </inspection_tool>
+  </profile>
+</component>
